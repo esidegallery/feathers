@@ -1,6 +1,6 @@
 /*
 Feathers
-Copyright 2012-2019 Bowler Hat LLC. All Rights Reserved.
+Copyright 2012-2020 Bowler Hat LLC. All Rights Reserved.
 
 This program is free software. You can redistribute and/or modify it in
 accordance with the terms of the accompanying license agreement.
@@ -538,20 +538,22 @@ package feathers.core
 		{
 			this._hideEffect = value;
 		}
+		
+		/**
+		 * @private
+		 */
+		protected var _pendingVisible:Boolean = true;
 
 		/**
 		 * @private
 		 */
 		override public function set visible(value:Boolean):void
 		{
-			if(value == true && this._showEffectContext !== null)
+			if(value == this._pendingVisible)
 			{
 				return;
 			}
-			if(value == false && this._hideEffectContext !== null)
-			{
-				return;
-			}
+			this._pendingVisible = value;
 			if(this._suspendEffectsCount == 0 && this._hideEffectContext !== null)
 			{
 				this._hideEffectContext.interrupt();
@@ -562,9 +564,9 @@ package feathers.core
 				this._showEffectContext.interrupt();
 				this._showEffectContext = null;
 			}
-			if(value)
+			if(this._pendingVisible)
 			{
-				super.visible = value;
+				super.visible = this._pendingVisible;
 				if(this.isCreated && this._suspendEffectsCount == 0 && this._showEffect !== null && this.stage !== null)
 				{
 					this._showEffectContext = IEffectContext(this._showEffect(this));
@@ -576,7 +578,7 @@ package feathers.core
 			{
 				if(!this.isCreated || this._suspendEffectsCount > 0 || this._hideEffect === null || this.stage === null)
 				{
-					super.visible = value;
+					super.visible = this._pendingVisible;
 				}
 				else
 				{
@@ -3611,6 +3613,12 @@ package feathers.core
 		 */
 		protected function feathersControl_addedToStageHandler(event:Event):void
 		{
+			if(this.stage === null)
+			{
+				//this could happen if removed from parent in another
+				//Event.ADDED_TO_STAGE listener
+				return;
+			}
 			//initialize before setting the validation queue to avoid
 			//getting added to the validation queue before initialization
 			//completes.
@@ -3693,7 +3701,7 @@ package feathers.core
 			if(!stopped)
 			{
 				this.suspendEffects();
-				this.visible = false;
+				super.visible = this._pendingVisible;
 				this.resumeEffects();
 			}
 		}
